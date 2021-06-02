@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import seaborn as sns
 import os
-import shutil
 
 sns.set()
 
@@ -22,14 +21,18 @@ xmin, xmax = 0.0, 6.0
 # Main window
 window = tk.Tk()
 window.title("Schrodinger Equation Solver")
-window.geometry('1000x800+700+200')
+window.geometry('1500x800+700+200')
 # window.pack()
 
 # gettig potential and l value as input
 pot_var = tk.StringVar()
+pot_var.set("0.5*x**2")
 Nmax_var = tk.StringVar()
+Nmax_var.set("1")
 xmin_var = tk.StringVar()
+xmin_var.set("0.0")
 xmax_var = tk.StringVar()
+xmax_var.set("4.0")
 
 
 def schro_var():
@@ -67,7 +70,7 @@ def plot2d(x, data, my_canvas, eigenEnergies):
     N = len(data)
     figSize = 3.5
     rowNumber = 0
-    dest = 'Schrodinger_App/plots/'
+    dest = 'plots/'
     if not os.path.exists(dest):
         os.makedirs(dest)
     for i in range(N):
@@ -77,14 +80,16 @@ def plot2d(x, data, my_canvas, eigenEnergies):
         fileName = f"Wavefunction_{i+1}.png"
         plotTitle = f"Eigenvalue {i+1}: {eigenEnergies[i]:.2f}"
         plt.plot(x, data[i])
-        plt.savefig(fileName)
+        plt.savefig(os.path.join(dest, fileName))
         plt.title(plotTitle)
         canvas = FigureCanvasTkAgg(fig, master=my_canvas)
         canvas.draw()
         canvas.get_tk_widget().grid(row=rowNumber, column=i % 4)
-        shutil.move(fileName, dest)
-
     return canvas
+
+
+def show_text():
+    print(canvas.itemcget(obj_id, 'text'))
 
 
 def eval_eigenvalues():
@@ -103,11 +108,18 @@ def eval_eigenvalues():
     h0 = (xmax - xmin) / N
     xRange = np.arange(xmin, xmax, h0)
     Endsign = -1
+    terminal = 0
     for nQuantum in range(Nmax):
         Limits_are_defined = False
         while Limits_are_defined is False:
             nodes_plus = 0
             Etrial = EupperLimit
+            terminal += 1
+            if terminal >= 1000:
+                Text = f"the iteration didn't converge. please use different xmin and xmax or change the potential"
+                my_canvas.bind(show_text)
+                obj_id = my_canvas.create_text(20, 30, text=Text)
+                break
             for i in range(2, N):
                 Ksquare = 2.0 * (Etrial - V(xRange[i]))
                 psi[i] = (
@@ -162,6 +174,11 @@ def eval_eigenvalues():
     potential = np.zeros(len(xRange))
     potential = [V(xRange[i]) for i in range(len(xRange))]
     # psi_final.append(potential)
+    return xRange, psi_final, eigenEnergies
+
+
+def eval_and_plot():
+    xRange, psi_final, eigenEnergies = eval_eigenvalues()
     plot2d(xRange, psi_final, frame, eigenEnergies)
 
 
@@ -172,6 +189,7 @@ def reset_values():
     xmax_var.set("")
     for widget in window.winfo_children():
         widget.destroy()
+        plt.close("all")
 
     main()
 
@@ -208,7 +226,7 @@ def main():
     xmax_entry = tk.Entry(window, textvariable=xmax_var)
 
     # submit button
-    submit = tk.Button(text="Submit", command=lambda: eval_eigenvalues())
+    submit = tk.Button(text="Submit", command=lambda: eval_and_plot())
 
     # reset button
 
